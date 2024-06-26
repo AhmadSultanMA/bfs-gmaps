@@ -15,9 +15,11 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [LocationController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::get('/rute', function () {
+    return Inertia::render('CreateRute');
+})->middleware(['auth', 'verified'])->name('rute');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

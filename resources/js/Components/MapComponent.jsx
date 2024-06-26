@@ -1,78 +1,140 @@
-import React, { useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
+import {
+    GoogleMap,
+    LoadScript,
+    Autocomplete,
+    Marker,
+    InfoWindow,
+} from "@react-google-maps/api";
+
+const libraries = ["places"];
+const mapContainerStyle = {
+    height: "400px",
+    width: "100%",
+};
+const center = {
+    lat: -7.5695177,
+    lng: 110.8250266,
+};
+
+const options = {
+    mapTypeControl: false,
+};
 
 function MapComponent({ onCoordinatesChange }) {
-    useEffect(() => {
-        const polyfillScript = document.createElement("script");
-        polyfillScript.src =
-            "https://polyfill.io/v3/polyfill.min.js?features=default";
-        polyfillScript.defer = true;
-        document.head.appendChild(polyfillScript);
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDBEXtTGUC4HiyflEfeqo-74WdAUJLT1E0&callback=initMap&v=weekly&solution_channel=GMP_CCS_geocodingservice_v1`;
-        script.defer = true;
-        document.head.appendChild(script);
+    const [map, setMap] = useState(null);
+    const [marker, setMarker] = useState(null);
+    const [place, setPlace] = useState(null);
+    const [infoWindowOpen, setInfoWindowOpen] = useState(false);
+    const autocompleteRef = useRef(null);
 
-        let map;
-        let marker;
-        let geocoder;
-
-        window.initMap = function () {
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 8,
-                center: { lat: -7.5695177, lng: 110.8250266 },
-                mapTypeControl: false,
-            });
-            geocoder = new google.maps.Geocoder();
-            marker = new google.maps.Marker({
-                map,
-            });
-            map.addListener("click", (e) => {
-                geocode({ location: e.latLng });
-            });
-            clear();
-        };
-
-        function clear() {
-            marker.setMap(null);
-        }
-
-        function geocode(request) {
-            clear();
-            geocoder
-                .geocode(request)
-                .then((result) => {
-                    const { results } = result;
-
-                    if (results.length > 0) {
-                        const location = results[0].geometry.location;
-                        const lat = location.lat();
-                        const lng = location.lng();
-                        map.setCenter(location);
-                        marker.setPosition(location);
-                        marker.setMap(map);
-
-                        if (onCoordinatesChange) {
-                            onCoordinatesChange(lat, lng);
-                        }
-                    }
-
-                    return results;
-                })
-                .catch((e) => {
-                    alert(
-                        "Geocode was not successful for the following reason: " +
-                            e
-                    );
-                });
-        }
-
-        return () => {
-            document.head.removeChild(polyfillScript);
-            document.head.removeChild(script);
-        };
+    const onLoad = useCallback((mapInstance) => {
+        setMap(mapInstance);
     }, []);
 
-    return <div id="map" style={{ height: "100%", width: "100%" }}></div>;
+    const onMapClick = useCallback(
+        (event) => {
+            const location = event.latLng;
+            const lat = location.lat();
+            const lng = location.lng();
+
+            setMarker({
+                position: location,
+            });
+
+            setInfoWindowOpen(true);
+
+            if (onCoordinatesChange) {
+                onCoordinatesChange(lat, lng);
+            }
+        },
+        [onCoordinatesChange]
+    );
+
+    const onPlaceChanged = useCallback(() => {
+        const place = autocompleteRef.current.getPlace();
+        if (!place.geometry || !place.geometry.location) {
+            alert(`No details available for input: '${place.name}'`);
+            return;
+        }
+
+        const location = place.geometry.location;
+        const lat = location.lat();
+        const lng = location.lng();
+
+        setMarker({
+            position: location,
+            displayName: place.name,
+            formattedAddress: place.formatted_address,
+        });
+
+        setPlace(place);
+        setInfoWindowOpen(true);
+
+        if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+        } else {
+            map.setCenter(location);
+            map.setZoom(17);
+        }
+
+        if (onCoordinatesChange) {
+            onCoordinatesChange(lat, lng);
+        }
+    }, [map, onCoordinatesChange]);
+
+    return (
+        <LoadScript
+            googleMapsApiKey="AIzaSyDBEXtTGUC4HiyflEfeqo-74WdAUJLT1E0"
+            libraries={libraries}
+        >
+            <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={center}
+                zoom={13}
+                options={options}
+                onLoad={onLoad}
+                onClick={onMapClick}
+                id="map"
+            >
+                <div
+                    className="pac-card"
+                    style={{
+                        position: "absolute",
+                        top: "10px",
+                        left: "10px",
+                        zIndex: "10",
+                        backgroundColor: "#fff",
+                        padding: "10px",
+                        borderRadius: "2px",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                    }}
+                >
+                    <div>
+                        <Autocomplete
+                            className="w-[300px]"
+                            onLoad={(autocomplete) =>
+                                (autocompleteRef.current = autocomplete)
+                            }
+                            onPlaceChanged={onPlaceChanged}
+                        >
+                            <input
+                                id="place-picker"
+                                type="text"
+                                placeholder="Enter a location"
+                                style={{
+                                    boxSizing: `border-box`,
+                                    padding: `0.5rem 1rem 1rem`,
+                                }}
+                                className="w-full"
+                            />
+                        </Autocomplete>
+                    </div>
+                </div>
+                {marker && <Marker position={marker.position}></Marker>}
+            </GoogleMap>
+        </LoadScript>
+    );
 }
 
 export default MapComponent;

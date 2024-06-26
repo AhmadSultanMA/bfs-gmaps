@@ -4,9 +4,18 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Location;
+use Inertia\Inertia;
 
 class LocationController extends Controller
 {
+    public function index()
+    {
+        $locations = Location::all();
+        return Inertia::render('Dashboard', [
+            'locations' => $locations,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
