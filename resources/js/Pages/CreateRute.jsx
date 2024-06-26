@@ -12,6 +12,7 @@ export default function CreateRute({ auth }) {
         lat: "",
         lng: "",
     });
+    const [isSubmitting, setIsSubmitting] = useState(false); // State untuk menentukan apakah sedang melakukan submit
 
     const handleCoordinatesChange = (lat, lng) => {
         setCoordinates({ lat, lng });
@@ -24,7 +25,10 @@ export default function CreateRute({ auth }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        Inertia.post("/locations", formData);
+        setIsSubmitting(true); // Menandakan bahwa proses submit dimulai
+        Inertia.post("/locations", formData).then(() => {
+            setIsSubmitting(false); // Setelah submit selesai, kembalikan ke false
+        });
     };
 
     const handleChange = (e) => {
@@ -91,7 +95,10 @@ export default function CreateRute({ auth }) {
                     </div>
                     <button
                         type="submit"
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded lg:w-9/12 duration-300 lg:mb-0 mb-10"
+                        className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded lg:w-9/12 duration-300 lg:mb-0 mb-10 ${
+                            isSubmitting ? "cursor-not-allowed opacity-50" : ""
+                        }`}
+                        disabled={isSubmitting}
                     >
                         Submit
                     </button>
